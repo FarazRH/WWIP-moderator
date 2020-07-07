@@ -1,0 +1,21 @@
+{
+  "name": "wwip",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "forever-monitor": "^3.0.0",
+    "got": "^7.1.0",
+    "html-to-text": "^5.1.1",
+    "moment": "^2.26.0",
+    "mysql": "^2.18.1",
+    "node-telegram-bot-api": "^0.50.0",
+    "sequelize": "^6.2.2",
+    "sqlite3": "^4.2.0"
+  }
+}
