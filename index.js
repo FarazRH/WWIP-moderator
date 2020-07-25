@@ -1,3 +1,4 @@
+//initialise telegram bot
 const BotToken    = "nothing:here";
 var   TelegramBot = require('node-telegram-bot-api'),
       telegram    = new TelegramBot(BotToken, { polling: true });
@@ -11,6 +12,9 @@ const botadmin1 = 987743454;
 const botadmin2 = 1098124951;
 
 const { Sequelize, DataTypes, Model, json } = require('sequelize');
+const { parse } = require('path');
+const { SSL_OP_ALLOW_UNSAFE_LEGACY_RENEGOTIATION } = require('constants');
+const { random } = require('underscore');
 
 const sequelize = new Sequelize({
   dialect: 'sqlite',
@@ -38,7 +42,7 @@ function start() {
 
   telegram.on("polling_error", (err) => console.log(err));
 
-telegram.onText(/\-sqlitetest/, async function(msg){
+telegram.onText(/\/sqlitetest/, async function(msg){
   if(msg.from.id = 987743454){
 try{
     await sequelize.authenticate();
@@ -57,13 +61,13 @@ telegram.onText(/\-promoteme/, async function(msg){
   console.log(await telegram.getChatMember(chatID, botID))
   if(me.can_promote_members == true){
     if(fromID == botadmin1){
-      telegram.promoteChatMember(chatID, botadmin1).then(  
+      telegram.promoteChatMember(chatID, botadmin1, {can_pin_messages: true, can_delete_messages: true}).then(  
          telegram.setChatAdministratorCustomTitle(chatID, botadmin1, 'ARI SUPPORT')
         );
       telegram.sendMessage(chatID, 'اجازه ها و فرمان های مدیریتی برای شما به عنوان پشتیبان ربات صادر شد.');
     }
     if (fromID == botadmin2) {
-      telegram.promoteChatMember(chatID, botadmin2).then(
+      telegram.promoteChatMember(chatID, botadmin2, {can_pin_messages: true, can_delete_messages: true}).then(
          telegram.setChatAdministratorCustomTitle(chatID, botadmin2, 'ARI SUPPORT')
         );
       telegram.sendMessage(chatID, 'اجازه ها و فرمان های مدیریتی برای شما به عنوان پشتیبان ربات صادر شد.');
@@ -73,18 +77,73 @@ telegram.onText(/\-promoteme/, async function(msg){
   } else {
   telegram.sendMessage(chatID, 'اجازه کافی برای این کار را ندارم!');
   }
-});
+})
 
-telegram.on("new_chat_members", function(msg){
+telegram.on("new_chat_members", async function(msg){
   if(msg.chat.id == '-1001479372715'){
     telegram.sendMessage(msg.chat.id, `سلام [${msg.new_chat_member.first_name}](tg://user?id=${msg.new_chat_member.id}) به گروه ساپورت آری خوش اومدی. لطفا سوال یا مشکلتون رو مطرح کنیم، در سریع ترین زمان ممکن پاسخگو خواهیم بود.`, {parse_mode: "Markdown"})
   } else {
   if(msg.new_chat_member.id == botID){
     telegram.sendMessage(msg.chat.id, 'سلام، من آری هستم 😄\nگروه شما هنوز در دیتابیس من به ثبت نرسیده است، *به همین دلیل برخی از قابلیت های ربات ممکن است به درستی کار نکنند.* لطفا با تیم پشتیبانی تماس بگیرید تا این تنظیمات را به طور دستی برای شما انجام دهند.\n\nگروه پشتیبانی: @AriBotTalk', {parse_mode: "Markdown"})
     telegram.sendMessage('-1001479372715', `I see a new group in my database, but it's not configured yet!\n*Group name:* \`${msg.chat.title}\`\n*Group ID:* \`${msg.chat.id}\``, {parse_mode: "Markdown"})
+  } else {
+  const project = await Groups.findByPk(msg.chat.id);
+  if(project != null){
+  request(`http://blackwerewolf.com/Stats/PlayerStats/?pid=${msg.from.id}&json=true`,function(error,response,body){
+    if(!error && response.statusCode == 200){
+      var res = JSON.parse(body);
+      if(res.gamesPlayed < 20){
+        telegram.sendMessage(`${project.supportid}`,'کاربر ' + `[${msg.from.first_name}](tg://user?id=${msg.from.id}) ` + 'اخیرا وارد گروه شده است. این بازیکن دارای استتس پایین تر از حد مجاز است، لطفا از مسلط بودن او به روند بازی اطمینان حاصل کنید!' + '\n\n *کل بازی های انجام شده*: ' + res.gamesPlayed + '\n *برد*: ' + res.won.total , {parse_mode: "Markdown", reply_markup: {inline_keyboard: [[{text: '🧑‍💻🦾 مدیریت هوشمند گروه 🧑‍💻🦾', callback_data: ':)'}]]}})
+      }
+    }
   }
-}
+)}
+}}
 });
+
+  telegram.onText(/\/gamble (.+)/, async function(msg, match){
+    const gamblevalue = match[1];
+    if(gamblevalue == ''){
+      telegram.sendMessage(msg.chat.id, 'لطفا مشخص کنید چه مقدار از پولتان را میخواهید ریسک کنید، مثال:\n */gamble 100*', {parse_mode: "Markdown"})
+    } else {
+      const project = await Users.findByPk(msg.from.id);
+      if(project.balance >= gamblevalue){
+    function between(min, max) {  
+      return Math.floor(
+        Math.random() * (max - min) + min
+      )
+    }
+    const randomnum = between(-gamblevalue, gamblevalue);
+    const check = randomnum.toString().startsWith('-')
+    if(check == true){
+      await project.update({ balance: project.balance + randomnum })
+      telegram.sendMessage(msg.chat.id, '*باختی!*\n' + `${randomnum}- سکه ازت کم کردم :(`, {parse_mode: "Markdown"})
+    } else {
+      await project.update({ balance: project.balance + randomnum })
+      telegram.sendMessage(msg.chat.id, '*بردی!*\n' + `-${randomnum}- سکه بهت اضافه کردم :)`, {parse_mode: "Markdown"})
+    } } else {
+      telegram.sendMessage(msg.chat.id, 'جیبت پر شد برگرد 🕸️')
+    }
+    telegram.sendMessage(msg.chat.id, randomnum)
+    }
+  })
+
+  telegram.onText(/\-leavechat (.+) (.+)/, function(msg, match){
+    if(msg.from.id == botadmin1){
+      const gpid = match[1];
+      const reason = match[2];
+      telegram.sendMessage(gpid, 'با سلام،\n' + 'این ربات از طرف تیم سازنده برای گروه شما غیرفعال شد و خارج میشود. لطفا برای اطلاعات بیشتر وارد [گروه پشتیبانی](https://t.me/aribottalk) شوید. \n*دلیل:*' + `\`${reason}\``, {parse_mode: "Markdown"}).then(
+      telegram.leaveChat(gpid));
+      telegram.sendMessage(msg.chat.id, `از ${gpid} خارج شدم. \n reason: ${reason}`)
+    }
+    if(msg.from.id == botadmin2){
+      const gpid = match[1];
+      const reason = match[2];
+      telegram.sendMessage(gpid, 'با سلام،\n' + 'این ربات از طرف تیم سازنده برای گروه شما غیرفعال شد و خارج میشود. لطفا برای اطلاعات بیشتر وارد [گروه پشتیبانی](https://t.me/aribottalk) شوید. \n*دلیل:*' + `\`${reason}\``, {parse_mode: "Markdown"}).then(
+      telegram.leaveChat(gpid));
+      telegram.sendMessage(msg.chat.id, `از ${gpid} خارج شدم. \n reason: ${reason}`)
+    }
+  })
 
   telegram.onText(/\/start/, function(msg){
     if(msg.text == '/start'){
@@ -109,12 +168,6 @@ telegram.on("new_chat_members", function(msg){
       },
       chatid: {
           type: DataTypes.INTEGER
-      },
-      createdAt: {
-        type: DataTypes.STRING
-      },
-      updatedAt: {
-        type: DataTypes.STRING
       }
     });
     const Groups = sequelize.define('Groups', {
@@ -168,7 +221,7 @@ telegram.on("new_chat_members", function(msg){
       telegram.sendMessage(msg.chat.id, 'استفاده از این دستور فقط برای تیم پشتیبانی مقدور است.')
     }
   });
-  telegram.onText(/\-addme/, async function(msg){
+  telegram.onText(/\/addme/, async function(msg){
     const project = await Users.findByPk(msg.from.id);
     if (project === null) {
     const newuser = await Users.create({ identifier: msg.from.id, firstName: msg.from.first_name, balance: '100'});
@@ -230,24 +283,56 @@ telegram.on("new_chat_members", function(msg){
     }
   });
 */
-  telegram.onText(/\-b/, async function(msg){
-    if (msg.text == '-b'){
+  telegram.onText(/\/b/, async function(msg){
     const project = await Users.findByPk(msg.from.id);
     if (project === null) {
       telegram.sendMessage(msg.chat.id, 'من تورو میشناسم؟')
     } else {
       telegram.sendMessage(msg.chat.id, `👤 ${project.firstName}\nموجودی: ${project.balance}💰\nامتیاز چالش: ${project.tbalance}🕹️`) 
 }
-    }
   });
 
-  telegram.onText(/\-s/), async function(msg){
-    if (msg.text == '-s'){
+  telegram.onText(/\/complete (.+) (.+)/, async function(msg, match){
+    const uid = match[1];
+    const task = match[2];
+    const project = await Users.findByPk(uid);
+    if(msg.chat.id == '-1001226494460'){
+      if(task == 'task1'){
+        const taskname = "اولین تست";
+        const taskreward = 100;
+        await project.update({ tbalance: project.tbalance + taskreward })
+        telegram.sendMessage(msg.chat.id, `امتیاز با موفقیت واریز شد.`)
+        telegram.sendMessage('-1001479372715', `کاربر [${project.firstName}](tg://user?id=${project.identifier}) ` + 'ماموریت زیر رو انجام داد: \n\n' + `✨ *${taskname}*\n` + ` به همین خاطر بهش ${taskreward} امتیاز دادم!`, {parse_mode: "Markdown"})
+        telegram.sendMessage(uid, `*تبریک!*\n` + 'شما ماموریت زیر رو با موفقیت انجام دادید:\n' + `*${taskname}*` + `\nحالا ${project.tbalance} امتیاز دارید.`, {parse_mode: "Markdown"})
+      }
+      if(task == 'task2'){
+        const taskname = "تست شماره دو";
+        const taskreward = 300;
+        await project.update({ tbalance: project.tbalance + taskreward })
+        telegram.sendMessage(msg.chat.id, `امتیاز با موفقیت واریز شد.`)
+        telegram.sendMessage('-1001479372715', `کاربر [${project.firstName}](tg://user?id=${project.identifier}) ` + 'ماموریت زیر رو انجام داد: \n\n' + `✨ *${taskname}*\n` + ` به همین خاطر بهش ${taskreward} امتیاز دادم!`, {parse_mode: "Markdown"})
+        telegram.sendMessage(uid, `*تبریک!*\n` + 'شما ماموریت زیر رو با موفقیت انجام دادید:\n' + `*${taskname}*` + `\nحالا ${project.tbalance} امتیاز دارید.`, {parse_mode: "Markdown"})
+      } 
+      if(task == 'task3'){
+        const taskname = "مخصوص پریا";
+        const taskreward = 1000;
+        await project.update({ tbalance: project.tbalance + taskreward })
+        telegram.sendMessage(msg.chat.id, `امتیاز با موفقیت واریز شد.`)
+        telegram.sendMessage('-1001479372715', `کاربر [${project.firstName}](tg://user?id=${project.identifier}) ` + 'ماموریت زیر رو انجام داد: \n\n' + `✨ *${taskname}*\n` + ` به همین خاطر بهش ${taskreward} امتیاز دادم!`, {parse_mode: "Markdown"})
+        telegram.sendMessage(uid, `*تبریک!*\n` + 'شما ماموریت زیر رو با موفقیت انجام دادید:\n' + `*${taskname}*` + `\nحالا ${project.tbalance} امتیاز دارید.`, {parse_mode: "Markdown"})
+      } 
+    } else {
+      telegram.sendMessage(msg.chat.id, 'این دستور فقط از طریق گروه مدیریتی قابل اجرا است.')
+    }
+  })
+
+  telegram.onText(/\/s/), async function(msg){
+    if (msg.text == '/s'){
       
     }
   }
 
-  telegram.onText(/\-chatid/, function(msg){
+  telegram.onText(/\/chatid/, function(msg){
     var chatID = msg.chat.id
     telegram.sendMessage(chatID, `${chatID}`)
   });
@@ -262,18 +347,16 @@ telegram.on("new_chat_members", function(msg){
   
   telegram.onText(/\-id/, function(msg){
     var chatID = msg.chat.id
-      telegram.sendMessage(chatID, '*User:* ' + `[${msg.reply_to_message.from.first_name}](tg://user?id=${msg.reply_to_message.from.id})` + '\n*Numberical ID:* ' + `${msg.reply_to_message.from.id}`, {parse_mode: "MarkdownV2"});
-
-    telegram.sendMessage(chatID, '*User:* ' + `[${msg.from.first_name}](tg://user?id=${msg.from.id})` + '\n*Numberical ID:* ' + `${msg.from.id}`, {parse_mode: "MarkdownV2"});
+      telegram.sendMessage(chatID, '*User:* ' + `[${msg.reply_to_message.from.first_name}](tg://user?id=${msg.reply_to_message.from.id})` + '\n*Numberical ID:* ' + `${msg.reply_to_message.from.id}`, {parse_mode: "Markdown"});
 
   });
 
-  telegram.onText(/\-ping/, function(msg){
+  telegram.onText(/\/ping/, function(msg){
     var chatID = msg.chat.id
     telegram.sendMessage(chatID,'Pong!');
   });
 
-  telegram.onText(/\-echo (.+)/, function(msg,match){
+  telegram.onText(/\/echo (.+)/, function(msg,match){
     var chatID = msg.chat.id;
     var CID = msg.from.id;
     var echo = match[1];
@@ -311,13 +394,13 @@ telegram.on("new_chat_members", function(msg){
     */
   });
 
-  telegram.onText(/\-preport/, async function(msg){
+  telegram.onText(/\/preport/, async function(msg){
     const project = await Groups.findByPk(msg.chat.id);
     var chatID = msg.chat.id
     var slicedcid = chatID.toString().slice(4);
     telegram.sendMessage(chatID, 'یک درخواست گزارش خصوصی برای ادمین ها ارسال شد، اولین ادمین در دسترس به پیوی شما مراجعه خواهد کرد!', {reply_to_message_id: msg.message_id})
     telegram.forwardMessage(`${project.supportid}`, chatID, msg.message_id)
-    telegram.sendMessage(`${project.supportid}`, 'کاربر: ' + `[${msg.from.first_name}](tg://user?id=${msg.from.id})` + '\nدرخواست پشتیبانی خصوصی دارد\nلطفا یک پیام خصوصی برای او ارسال کنید' + `\n[Jump to message](https://t.me/c/${slicedcid}/${msg.message_id})`, {parse_mode: "MarkdownV2"})
+    telegram.sendMessage(`${project.supportid}`, 'کاربر: ' + `[${msg.from.first_name}](tg://user?id=${msg.from.id})` + '\nدرخواست پشتیبانی خصوصی دارد\nلطفا یک پیام خصوصی برای او ارسال کنید' + `\n[Jump to message](https://t.me/c/${slicedcid}/${msg.message_id})`, {parse_mode: "Markdown"})
   });
 
   telegram.onText(/\@admin/, async function(msg){
@@ -325,11 +408,10 @@ telegram.on("new_chat_members", function(msg){
     var chatID = msg.chat.id
     var slicedcid = chatID.toString().slice(4);
     telegram.sendMessage(chatID, 'گزارش شد!', {reply_to_message_id: msg.message_id})
-    telegram.forwardMessage(`${project.supportid}`, chatID, msg.message_id)
-    telegram.sendMessage(`${project.supportid}`, 'کاربر: ' + `[${msg.from.first_name}](tg://user?id=${msg.from.id})` + '\nیک گزارش در گروه ثبت کرد' + `\n[Jump to message](https://t.me/c/${slicedcid}/${msg.message_id})`, {parse_mode: "MarkdownV2"})
+    telegram.sendMessage(`${project.supportid}`, 'کاربر: ' + `[${msg.from.first_name}](tg://user?id=${msg.from.id})` + '\nیک گزارش در گروه ثبت کرد' + `\n[Jump to message](https://t.me/c/${slicedcid}/${msg.message_id})`, {parse_mode: "Markdown"})
   });
 
-  telegram.onText(/\#شکارچی/ && /\#شکارم/ && /\#شکار/ && /\#ch/, async function(msg){
+  telegram.onText(/\#ch/, async function(msg){
     const project = await Groups.findByPk(msg.chat.id);
     var chatID = msg.chat.id
     telegram.pinChatMessage(chatID, msg.message_id)
@@ -338,12 +420,67 @@ telegram.on("new_chat_members", function(msg){
       if(!error && response.statusCode == 200){
         var res = JSON.parse(body);
         if(res.gamesPlayed < 100){
-          telegram.sendMessage(`${project.supportid}`,'کاربر ' + `[${msg.from.first_name}](tg://user?id=${msg.from.id}) ` + 'شکارچی فعلی بازی تاکنون کمتر از 100 بازی انجام داده است، لطفا از مسلط بودن بازیکن به روند بازی اطمینان حاصل کنید' + '\n\n *کل بازی های انجام شده*: ' + res.gamesPlayed + '\n *برد*: ' + res.won.total , {parse_mode: "MarkdownV2", reply_markup: {inline_keyboard: [[{text: '🧑‍💻🦾 مدیریت هوشمند گروه 🧑‍💻🦾', callback_data: ':)'}]]}})
+          telegram.sendMessage(`${project.supportid}`,'کاربر ' + `[${msg.from.first_name}](tg://user?id=${msg.from.id}) ` + 'شکارچی فعلی بازی تاکنون کمتر از 100 بازی انجام داده است، لطفا از مسلط بودن بازیکن به روند بازی اطمینان حاصل کنید' + '\n\n *کل بازی های انجام شده*: ' + res.gamesPlayed + '\n *برد*: ' + res.won.total , {parse_mode: "Markdown", reply_markup: {inline_keyboard: [[{text: '🧑‍💻🦾 مدیریت هوشمند گروه 🧑‍💻🦾', callback_data: ':)'}]]}})
         }
       }
     }
   )});
 
+  telegram.onText(/\#شکارچی/, async function(msg){
+    if(msg.text == "#شکارچی"){
+    const project = await Groups.findByPk(msg.chat.id);
+    var chatID = msg.chat.id
+    telegram.pinChatMessage(chatID, msg.message_id)
+    telegram.sendMessage(chatID, 'هشتگ شکارچی با موفقیت شناسایی و پین شد!', {reply_markup: {inline_keyboard: [[{text: '💂 مکمل پیوی 💂', url: `https://t.me/${msg.from.username}`}]]}})
+    request(`http://blackwerewolf.com/Stats/PlayerStats/?pid=${msg.from.id}&json=true`,function(error,response,body){
+      if(!error && response.statusCode == 200){
+        var res = JSON.parse(body);
+        if(res.gamesPlayed < 100){
+          telegram.sendMessage(`${project.supportid}`,'کاربر ' + `[${msg.from.first_name}](tg://user?id=${msg.from.id}) ` + 'شکارچی فعلی بازی تاکنون کمتر از 100 بازی انجام داده است، لطفا از مسلط بودن بازیکن به روند بازی اطمینان حاصل کنید' + '\n\n *کل بازی های انجام شده*: ' + res.gamesPlayed + '\n *برد*: ' + res.won.total , {parse_mode: "Markdown", reply_markup: {inline_keyboard: [[{text: '🧑‍💻🦾 مدیریت هوشمند گروه 🧑‍💻🦾', callback_data: ':)'}]]}})
+        }
+      }
+    }
+  )}});
+
+  telegram.onText(/\#شکارم/, async function(msg){
+    if(msg.text == "#شکارم"){
+    const project = await Groups.findByPk(msg.chat.id);
+    var chatID = msg.chat.id
+    telegram.pinChatMessage(chatID, msg.message_id)
+    telegram.sendMessage(chatID, 'هشتگ شکارچی با موفقیت شناسایی و پین شد!', {reply_markup: {inline_keyboard: [[{text: '💂 مکمل پیوی 💂', url: `https://t.me/${msg.from.username}`}]]}})
+    request(`http://blackwerewolf.com/Stats/PlayerStats/?pid=${msg.from.id}&json=true`,function(error,response,body){
+      if(!error && response.statusCode == 200){
+        var res = JSON.parse(body);
+        if(res.gamesPlayed < 100){
+          telegram.sendMessage(`${project.supportid}`,'کاربر ' + `[${msg.from.first_name}](tg://user?id=${msg.from.id}) ` + 'شکارچی فعلی بازی تاکنون کمتر از 100 بازی انجام داده است، لطفا از مسلط بودن بازیکن به روند بازی اطمینان حاصل کنید' + '\n\n *کل بازی های انجام شده*: ' + res.gamesPlayed + '\n *برد*: ' + res.won.total , {parse_mode: "Markdown", reply_markup: {inline_keyboard: [[{text: '🧑‍💻🦾 مدیریت هوشمند گروه 🧑‍💻🦾', callback_data: ':)'}]]}})
+        }
+      }
+    }
+  )}});
+
+  telegram.onText(/\#شکار/, async function(msg){
+    if(msg.text == "#شکار"){
+    const project = await Groups.findByPk(msg.chat.id);
+    var chatID = msg.chat.id
+    telegram.pinChatMessage(chatID, msg.message_id)
+    telegram.sendMessage(chatID, 'هشتگ شکارچی با موفقیت شناسایی و پین شد!', {reply_markup: {inline_keyboard: [[{text: '💂 مکمل پیوی 💂', url: `https://t.me/${msg.from.username}`}]]}})
+    request(`http://blackwerewolf.com/Stats/PlayerStats/?pid=${msg.from.id}&json=true`,function(error,response,body){
+      if(!error && response.statusCode == 200){
+        var res = JSON.parse(body);
+        if(res.gamesPlayed < 100){
+          telegram.sendMessage(`${project.supportid}`,'کاربر ' + `[${msg.from.first_name}](tg://user?id=${msg.from.id}) ` + 'شکارچی فعلی بازی تاکنون کمتر از 100 بازی انجام داده است، لطفا از مسلط بودن بازیکن به روند بازی اطمینان حاصل کنید' + '\n\n *کل بازی های انجام شده*: ' + res.gamesPlayed + '\n *برد*: ' + res.won.total , {parse_mode: "Markdown", reply_markup: {inline_keyboard: [[{text: '🧑‍💻🦾 مدیریت هوشمند گروه 🧑‍💻🦾', callback_data: ':)'}]]}})
+        }
+      }
+    }
+  )}});
+/*
+  telegram.on("text", async function(msg){
+    const project = await Users.findByPk(msg.from.id);
+    if (project === null) {
+    const newuser = await Users.create({ identifier: msg.from.id, firstName: msg.from.first_name, balance: '100'});
+    }
+  });
+*/
   telegram.onText(/\-getchat/, function(msg){
     var chatID = msg.chat.id
     telegram.exportChatInviteLink(chatID)
@@ -368,18 +505,15 @@ telegram.on("new_chat_members", function(msg){
     request(`http://blackwerewolf.com/Stats/PlayerStats/?pid=${ID}&json=true`,function(error,response,body){
       if(!error && response.statusCode == 200){
         var res = JSON.parse(body);
-        var totalStats = body.gamesPlayed;
         if(res.gamesPlayed != null){
            telegram.sendMessage(chatID, 'Total: ' + res.gamesPlayed + '\nWon: ' + res.won.total + ' (' + res.won.percent + '%)\nLost: ' + res.lost.total + ' (' + res.lost.percent + '%)');
         }else{
           telegram.sendMessage(chatID, `${ID} has no stats yet!`)
         }
-        console.log(`requested stats for ${ID}`);
-        return;
       }
     });
 
-    telegram.onText(/\-echo (.+)/, function(msg,match){
+    telegram.onText(/\/echo (.+)/, function(msg,match){
       var chatID = msg.chat.id;
       var echo = match[1];
       telegram.sendMessage(chatID, echo)
