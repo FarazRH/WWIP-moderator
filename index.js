@@ -1,43 +1,21 @@
 //initialise telegram bot
-const BotToken    = "nothing:here";
-var   TelegramBot = require('node-telegram-bot-api'),
-      telegram    = new TelegramBot(BotToken, { polling: true });
-
-
+const token    = "nothing:here";
+const TelegramBot = require('node-telegram-bot-api');
+const telegram = new TelegramBot(token, {polling: true});
 //declare user object
-
 var request = require('request');
 const botID = 1340428877;
 const botadmin1 = 987743454;
 const botadmin2 = 1098124951;
+const botadmin3 = 105088602;
 
 const { Sequelize, DataTypes, Model, json } = require('sequelize');
-const { parse } = require('path');
-const { SSL_OP_ALLOW_UNSAFE_LEGACY_RENEGOTIATION } = require('constants');
-const { random } = require('underscore');
+
 
 const sequelize = new Sequelize({
   dialect: 'sqlite',
   storage: 'path/to/database.sqlite'
 });
-/*
-function start() {
-  return myfunction();
-}
-
-// Call start
-(async() => {
-  await sequelize.authenticate();
-  console.log('Connection has been established successfully.');
-} catch (error) {
-  console.error('Unable to connect to the database:', error);
-};
-*/
-/*
-  telegram.onText(/\-start/ && /\/start/, function(msg){
-    telegram.sendMessage(msg.from.id, 'hello, how can i help you? ^^');
-  });
-*/
 
 
   telegram.on("polling_error", (err) => console.log(err));
@@ -147,8 +125,95 @@ telegram.on("new_chat_members", async function(msg){
 
   telegram.onText(/\/start/, function(msg){
     if(msg.text == '/start'){
-      telegram.sendMessage(msg.from.id, 'چطور میتونم کمکت کنم؟ :)')
+      const check = msg.chat.id.toString().startsWith('-')
+      if(check == false){
+        const opts = {
+          reply_to_message_id: msg.message_id,
+          reply_markup: JSON.stringify({
+            keyboard: [
+              ['🍭 ثبت هشتگ اختصاصی 🍭']
+            ]
+          })
+        };
+      telegram.sendMessage(msg.from.id, 'چطور میتونم کمکت کنم؟ :)\n برای دیدن لیست دستورات اینجا کلیک کنید: /help', opts)
+      } else {
+        telegram.sendMessage(msg.chat.id, 'این دستور فقط توی پیوی قابل استفاده ست.')
+      }
     }
+  });
+  telegram.onText(/\🍭 ثبت هشتگ اختصاصی \🍭/, async function(msg){
+    const check = msg.chat.id.toString().startsWith('-')
+    if(check == false){
+      const project1 = await Users.findByPk(msg.from.id)
+      const project2 = await Groups.findByPk(project1.chatid)
+      if (project2 != null){
+        const opts = {
+          reply_to_message_id: msg.message_id,
+          reply_markup: JSON.stringify({
+            keyboard: [
+              ['بله، هشتگ من رو ثبت کن.'],
+              ['نه، منصرف شدم!']
+            ]
+          })
+        }; 
+        telegram.sendMessage(msg.from.id, 'برای انجام اینکار به 3000 سکه یا 500 امتیاز چالش نیاز دارید. بعد از ثبت این مقدار از حساب شما کم خواهد شد (اولویت با سکه است) \n\n' + `توجه کنید شما در حال ثبت یک هشتگ درگروه ${project2.name} هستید. آیا مایلید ادامه دهید؟`, opts)
+      } else {
+        telegram.sendMessage(msg.from.id, 'یک خطا رخ داده است!\n`[ERROR: 1001]`',{parse_mode: "Markdown"})
+      }
+    }
+  });
+
+  telegram.onText(/نه\، منصرف شدم\!/, function(msg){
+    telegram.sendMessage(msg.from.id,'حله!',{reply_markup: {remove_keyboard: true}})
+  })
+
+  telegram.onText(/بله\، هشتگ من رو ثبت کن\./, async function(msg){
+    const check = msg.chat.id.toString().startsWith('-')
+    if(check == false){
+      const project1 = await Users.findByPk(msg.from.id)
+      const project2 = await Groups.findByPk(project1.chatid);
+      if(project1.balance >= 3000){
+        await project1.update({ balance: project1.balance - 3000 })
+    telegram.sendMessage(msg.from.id, 'لطفا نام هشتگ خود را وارد کنید (برای مثال #یک_هشتگ) هشتگ شما باید با # شروع شود و شامل حروف فارسی یا انگلیسی و آندرلاین شود، فاصله در هشتگ مجاز نیست:', {reply_markup: {remove_keyboard: true}})
+    telegram.on("text", function(msg2) {
+      if(msg2.chat.id == project1.identifier){
+        if(msg2.text != "بله، هشتگ من رو ثبت کن."){
+      if(msg2.text.startsWith('#') == true){
+        telegram.sendMessage(msg2.from.id, 'لطفا محتوای هشتگ را ارسال کنید (میتواند متن، ویس، گیف یا رسانه باشد):');
+        telegram.on("message", function(msg3){
+          if(msg3.chat.id == project1.identifier){
+          telegram.sendMessage(project2.supportid, `[این کاربر](tg://user?id=${msg.from.id}) (@${msg.from.username}) یک هشتگ در گروه ثبت کرده است: \n نام هشتگ: \`${msg2.text}\`` + '\n*درصورت تایید این هشتگ آنرا با دستور /extra در گروه اصلی ثبت کنید.*',{parse_mode: "Markdown"});
+          telegram.forwardMessage(project2.supportid, msg3.chat.id, msg3.message_id);
+          telegram.sendMessage(msg.from.id, 'هشتگ شما با موفقیت ثبت شد و پس از تایید مدیران گروه قابل استفاده است.');
+        }}); 
+      } else {
+        telegram.sendMessage(msg.from.id, 'هشتگ شما باید با # شروع شود.')
+      }}
+      return; 
+    }
+    })} else {
+      telegram.sendMessage(msg.from.id, `موجودی شما کافی نیست!\n` + `*موجودی شما*: ${project1.balance}\n` + `*قیمت:* \`3000\``, {parse_mode: "Markdown"})
+    }    
+    }
+  });
+
+  telegram.onText(/\/pay (.+)/, async function(msg, match){
+    const chatmember = await telegram.getChatMember(msg.chat.id, msg.from.id)
+    if(chatmember.status == "administrator"){
+      const project1 = await Users.findByPk(msg.reply_to_message.from.id);
+      if(project1.chatid == msg.chat.id){
+        await project1.update({balance: project1.balance + match[1]})
+      telegram.sendMessage(msg.chat.id, `به [این کاربر](tg://user?id=${msg.reply_to_message.from.id}) به مقدار ${match[1]} سکه اضافه شد.`, {parse_mode: "Markdown"})
+    } else {
+      telegram.sendMessage(msg.chat.id, "این کاربر در گروه شما به ثبت نرسیده است. باید از دستور /addme استفاده کند.", {parse_mode: "Markdown"})
+    }
+    } else {
+      telegram.sendMessage(msg.chat.id, "شما ادمین نیستید.");
+    }
+  });
+
+  telegram.onText(/\/help/, function(msg){
+    telegram.sendMessage(msg.from.id, "یک دسته بندی انتخاب کنید:", {parse_mode: "Markdown", reply_markup: {inline_keyboard: [[{text: 'سکــ💰ـه و امتیاز', url: 'https://telegra.ph/%D8%AF%D8%B3%D8%AA%D9%88%D8%B1%D8%A7%D8%AA-%D8%B3%DA%A9%D9%87-%D8%A7%D9%85%D8%AA%DB%8C%D8%A7%D8%B2-%D9%88-%D8%AF%DB%8C%D8%AA%D8%A7%D8%A8%DB%8C%D8%B3-07-29'}, {text: 'سایر خدمات و دستورات بیشتر...', url: `https://t.me/${msg.from.username}`}]]}})
   });
 
   const Users = sequelize.define('Users', {
@@ -220,11 +285,25 @@ telegram.on("new_chat_members", async function(msg){
     } else {
       telegram.sendMessage(msg.chat.id, 'استفاده از این دستور فقط برای تیم پشتیبانی مقدور است.')
     }
+    if(msg.from.id == botadmin3){
+      const project = await Groups.findByPk(msg.chat.id);
+      if (project === null) {
+      const newgp = await Groups.create({ identifier: msg.chat.id, name: msg.chat.title, supportid: SupportID});
+      telegram.sendMessage(msg.chat.id, 'این گروه با موفقیت در دیتابیس ثبت شد😄')
+      } else {
+        await Groups.update({ name: msg.chat.title, supportid: SupportID }, {
+          where: {
+            identifier: msg.chat.id
+          }
+        });
+        telegram.sendMessage(msg.chat.id, 'اطلاعات این گروه با موفقیت به روز شد!')
+      }
+    }
   });
   telegram.onText(/\/addme/, async function(msg){
     const project = await Users.findByPk(msg.from.id);
     if (project === null) {
-    const newuser = await Users.create({ identifier: msg.from.id, firstName: msg.from.first_name, balance: '100'});
+    const newuser = await Users.create({ identifier: msg.from.id, firstName: msg.from.first_name, balance: '100', chatid: msg.chat.id});
     telegram.sendMessage(msg.chat.id, 'تورو به حافظه ام اضافه کردم،\nو صد سکه به موجودیت اضافه کردم. امیدوارم درست ازش استفاده کنی 😄')
     } else {
       telegram.sendMessage(msg.chat.id, 'نیازی نیست! همین الانشم تورو میشناسم :D')
@@ -272,55 +351,210 @@ telegram.on("new_chat_members", async function(msg){
     telegram.sendMessage(msg.chat.id, projectsplits[20]);
     telegram.sendMessage(msg.chat.id, projectsplits[21]);
   })
-/*
+
   telegram.on("text", async function(msg){
     const project = await Users.findByPk(msg.from.id);
     if (project === null) {
+      if(msg.chat.id != '-1001479372715'){
     const newuser = await Users.create({ identifier: msg.from.id, firstName: msg.from.first_name, balance: '100', chatid: msg.chat.id});
-    console.log('%c Added a new user to my database!', 'background: #FFFFFF; color: #08B347');
-    } else {
-    console.log("Already knew this user, so didnt add em.");
-    }
+
+    }}
   });
-*/
+
   telegram.onText(/\/b/, async function(msg){
+    if(msg.text == "/b"){
     const project = await Users.findByPk(msg.from.id);
+    const project2 = await Groups.findByPk(project.chatid);
     if (project === null) {
       telegram.sendMessage(msg.chat.id, 'من تورو میشناسم؟')
     } else {
-      telegram.sendMessage(msg.chat.id, `👤 ${project.firstName}\nموجودی: ${project.balance}💰\nامتیاز چالش: ${project.tbalance}🕹️`) 
-}
+      telegram.sendMessage(msg.chat.id, `👤 ${project.firstName}\nگروه: ${project2.name}\nموجودی: ${project.balance}💰\nامتیاز چالش: ${project.tbalance}🕹️`) 
+  }}
   });
 
   telegram.onText(/\/complete (.+) (.+)/, async function(msg, match){
     const uid = match[1];
     const task = match[2];
+    const SUPPORTID = '-1001187919974';
+    const MAINGP = '-1001418366073';
     const project = await Users.findByPk(uid);
-    if(msg.chat.id == '-1001226494460'){
+    if(msg.chat.id == SUPPORTID){
       if(task == 'task1'){
-        const taskname = "اولین تست";
-        const taskreward = 100;
+        const taskname = "دعوت کننده";
+        const taskreward = 20;
         await project.update({ tbalance: project.tbalance + taskreward })
         telegram.sendMessage(msg.chat.id, `امتیاز با موفقیت واریز شد.`)
-        telegram.sendMessage('-1001479372715', `کاربر [${project.firstName}](tg://user?id=${project.identifier}) ` + 'ماموریت زیر رو انجام داد: \n\n' + `✨ *${taskname}*\n` + ` به همین خاطر بهش ${taskreward} امتیاز دادم!`, {parse_mode: "Markdown"})
+        telegram.sendMessage(MAINGP `کاربر [${project.firstName}](tg://user?id=${project.identifier}) ` + 'ماموریت زیر رو انجام داد: \n\n' + `✨ *${taskname}*\n` + ` به همین خاطر بهش ${taskreward} امتیاز دادم!`, {parse_mode: "Markdown"})
         telegram.sendMessage(uid, `*تبریک!*\n` + 'شما ماموریت زیر رو با موفقیت انجام دادید:\n' + `*${taskname}*` + `\nحالا ${project.tbalance} امتیاز دارید.`, {parse_mode: "Markdown"})
       }
       if(task == 'task2'){
-        const taskname = "تست شماره دو";
-        const taskreward = 300;
+        const taskname = "تنهای پرو";
+        const taskreward = 50;
         await project.update({ tbalance: project.tbalance + taskreward })
         telegram.sendMessage(msg.chat.id, `امتیاز با موفقیت واریز شد.`)
-        telegram.sendMessage('-1001479372715', `کاربر [${project.firstName}](tg://user?id=${project.identifier}) ` + 'ماموریت زیر رو انجام داد: \n\n' + `✨ *${taskname}*\n` + ` به همین خاطر بهش ${taskreward} امتیاز دادم!`, {parse_mode: "Markdown"})
+        telegram.sendMessage(MAINGP, `کاربر [${project.firstName}](tg://user?id=${project.identifier}) ` + 'ماموریت زیر رو انجام داد: \n\n' + `✨ *${taskname}*\n` + ` به همین خاطر بهش ${taskreward} امتیاز دادم!`, {parse_mode: "Markdown"})
         telegram.sendMessage(uid, `*تبریک!*\n` + 'شما ماموریت زیر رو با موفقیت انجام دادید:\n' + `*${taskname}*` + `\nحالا ${project.tbalance} امتیاز دارید.`, {parse_mode: "Markdown"})
       } 
       if(task == 'task3'){
-        const taskname = "مخصوص پریا";
-        const taskreward = 1000;
+        const taskname = "Pro Hunter";
+        const taskreward = 40;
         await project.update({ tbalance: project.tbalance + taskreward })
         telegram.sendMessage(msg.chat.id, `امتیاز با موفقیت واریز شد.`)
-        telegram.sendMessage('-1001479372715', `کاربر [${project.firstName}](tg://user?id=${project.identifier}) ` + 'ماموریت زیر رو انجام داد: \n\n' + `✨ *${taskname}*\n` + ` به همین خاطر بهش ${taskreward} امتیاز دادم!`, {parse_mode: "Markdown"})
+        telegram.sendMessage(MAINGP `کاربر [${project.firstName}](tg://user?id=${project.identifier}) ` + 'ماموریت زیر رو انجام داد: \n\n' + `✨ *${taskname}*\n` + ` به همین خاطر بهش ${taskreward} امتیاز دادم!`, {parse_mode: "Markdown"})
+        telegram.sendMessage(uid, `*تبریک!*\n` + 'شما ماموریت زیر رو با موفقیت انجام دادید:\n' + `*${taskname}*` + `\nحالا ${project.tbalance} امتیاز دارید.`, {parse_mode: "Markdown"})
+      }    
+       if(task == 'task4'){
+        const taskname = "کمر که نیس";
+        const taskreward = 40;
+        await project.update({ tbalance: project.tbalance + taskreward })
+        telegram.sendMessage(msg.chat.id, `امتیاز با موفقیت واریز شد.`)
+        telegram.sendMessage(MAINGP `کاربر [${project.firstName}](tg://user?id=${project.identifier}) ` + 'ماموریت زیر رو انجام داد: \n\n' + `✨ *${taskname}*\n` + ` به همین خاطر بهش ${taskreward} امتیاز دادم!`, {parse_mode: "Markdown"})
         telegram.sendMessage(uid, `*تبریک!*\n` + 'شما ماموریت زیر رو با موفقیت انجام دادید:\n' + `*${taskname}*` + `\nحالا ${project.tbalance} امتیاز دارید.`, {parse_mode: "Markdown"})
       } 
+      if(task == 'task5'){
+        const taskname = "محافظ چوسان قدیم";
+        const taskreward = 40;
+        await project.update({ tbalance: project.tbalance + taskreward })
+        telegram.sendMessage(msg.chat.id, `امتیاز با موفقیت واریز شد.`)
+        telegram.sendMessage(MAINGP `کاربر [${project.firstName}](tg://user?id=${project.identifier}) ` + 'ماموریت زیر رو انجام داد: \n\n' + `✨ *${taskname}*\n` + ` به همین خاطر بهش ${taskreward} امتیاز دادم!`, {parse_mode: "Markdown"})
+        telegram.sendMessage(uid, `*تبریک!*\n` + 'شما ماموریت زیر رو با موفقیت انجام دادید:\n' + `*${taskname}*` + `\nحالا ${project.tbalance} امتیاز دارید.`, {parse_mode: "Markdown"})
+      }
+      if(task == 'task6'){
+        const taskname = "ملی و راه های نرفته اش";
+        const taskreward = 40;
+        await project.update({ tbalance: project.tbalance + taskreward })
+        telegram.sendMessage(msg.chat.id, `امتیاز با موفقیت واریز شد.`)
+        telegram.sendMessage(MAINGP `کاربر [${project.firstName}](tg://user?id=${project.identifier}) ` + 'ماموریت زیر رو انجام داد: \n\n' + `✨ *${taskname}*\n` + ` به همین خاطر بهش ${taskreward} امتیاز دادم!`, {parse_mode: "Markdown"})
+        telegram.sendMessage(uid, `*تبریک!*\n` + 'شما ماموریت زیر رو با موفقیت انجام دادید:\n' + `*${taskname}*` + `\nحالا ${project.tbalance} امتیاز دارید.`, {parse_mode: "Markdown"})
+      }
+      if(task == 'task7'){
+        const taskname = "شانس مایه";
+        const taskreward = 100;
+        await project.update({ tbalance: project.tbalance + taskreward })
+        telegram.sendMessage(msg.chat.id, `امتیاز با موفقیت واریز شد.`)
+        telegram.sendMessage(MAINGP `کاربر [${project.firstName}](tg://user?id=${project.identifier}) ` + 'ماموریت زیر رو انجام داد: \n\n' + `✨ *${taskname}*\n` + ` به همین خاطر بهش ${taskreward} امتیاز دادم!`, {parse_mode: "Markdown"})
+        telegram.sendMessage(uid, `*تبریک!*\n` + 'شما ماموریت زیر رو با موفقیت انجام دادید:\n' + `*${taskname}*` + `\nحالا ${project.tbalance} امتیاز دارید.`, {parse_mode: "Markdown"})
+      }
+      if(task == 'task8'){
+        const taskname = "روستایی نوب";
+        const taskreward = 30;
+        await project.update({ tbalance: project.tbalance + taskreward })
+        telegram.sendMessage(msg.chat.id, `امتیاز با موفقیت واریز شد.`)
+        telegram.sendMessage(MAINGP `کاربر [${project.firstName}](tg://user?id=${project.identifier}) ` + 'ماموریت زیر رو انجام داد: \n\n' + `✨ *${taskname}*\n` + ` به همین خاطر بهش ${taskreward} امتیاز دادم!`, {parse_mode: "Markdown"})
+        telegram.sendMessage(uid, `*تبریک!*\n` + 'شما ماموریت زیر رو با موفقیت انجام دادید:\n' + `*${taskname}*` + `\nحالا ${project.tbalance} امتیاز دارید.`, {parse_mode: "Markdown"})
+      }
+      if(task == 'task9'){
+        const taskname = "بنای پروو";
+        const taskreward = 20;
+        await project.update({ tbalance: project.tbalance + taskreward })
+        telegram.sendMessage(msg.chat.id, `امتیاز با موفقیت واریز شد.`)
+        telegram.sendMessage(MAINGP `کاربر [${project.firstName}](tg://user?id=${project.identifier}) ` + 'ماموریت زیر رو انجام داد: \n\n' + `✨ *${taskname}*\n` + ` به همین خاطر بهش ${taskreward} امتیاز دادم!`, {parse_mode: "Markdown"})
+        telegram.sendMessage(uid, `*تبریک!*\n` + 'شما ماموریت زیر رو با موفقیت انجام دادید:\n' + `*${taskname}*` + `\nحالا ${project.tbalance} امتیاز دارید.`, {parse_mode: "Markdown"})
+      }
+      if(task == 'task10'){
+        const taskname = "به نوعی فاحشه";
+        const taskreward = 40;
+        await project.update({ tbalance: project.tbalance + taskreward })
+        telegram.sendMessage(msg.chat.id, `امتیاز با موفقیت واریز شد.`)
+        telegram.sendMessage(MAINGP `کاربر [${project.firstName}](tg://user?id=${project.identifier}) ` + 'ماموریت زیر رو انجام داد: \n\n' + `✨ *${taskname}*\n` + ` به همین خاطر بهش ${taskreward} امتیاز دادم!`, {parse_mode: "Markdown"})
+        telegram.sendMessage(uid, `*تبریک!*\n` + 'شما ماموریت زیر رو با موفقیت انجام دادید:\n' + `*${taskname}*` + `\nحالا ${project.tbalance} امتیاز دارید.`, {parse_mode: "Markdown"})
+      }
+      if(task == 'task11'){
+        const taskname = "جومونگ واید";
+        const taskreward = 40;
+        await project.update({ tbalance: project.tbalance + taskreward })
+        telegram.sendMessage(msg.chat.id, `امتیاز با موفقیت واریز شد.`)
+        telegram.sendMessage(MAINGP `کاربر [${project.firstName}](tg://user?id=${project.identifier}) ` + 'ماموریت زیر رو انجام داد: \n\n' + `✨ *${taskname}*\n` + ` به همین خاطر بهش ${taskreward} امتیاز دادم!`, {parse_mode: "Markdown"})
+        telegram.sendMessage(uid, `*تبریک!*\n` + 'شما ماموریت زیر رو با موفقیت انجام دادید:\n' + `*${taskname}*` + `\nحالا ${project.tbalance} امتیاز دارید.`, {parse_mode: "Markdown"})
+      }
+      if(task == 'task12'){
+        const taskname = "یک عدد نوب";
+        const taskreward = 20;
+        await project.update({ tbalance: project.tbalance + taskreward })
+        telegram.sendMessage(msg.chat.id, `امتیاز با موفقیت واریز شد.`)
+        telegram.sendMessage(MAINGP `کاربر [${project.firstName}](tg://user?id=${project.identifier}) ` + 'ماموریت زیر رو انجام داد: \n\n' + `✨ *${taskname}*\n` + ` به همین خاطر بهش ${taskreward} امتیاز دادم!`, {parse_mode: "Markdown"})
+        telegram.sendMessage(uid, `*تبریک!*\n` + 'شما ماموریت زیر رو با موفقیت انجام دادید:\n' + `*${taskname}*` + `\nحالا ${project.tbalance} امتیاز دارید.`, {parse_mode: "Markdown"})
+      }
+      if(task == 'task13'){
+        const taskname = "عاشقانه های من و تو";
+        const taskreward = 60;
+        await project.update({ tbalance: project.tbalance + taskreward })
+        telegram.sendMessage(msg.chat.id, `امتیاز با موفقیت واریز شد.`)
+        telegram.sendMessage(MAINGP `کاربر [${project.firstName}](tg://user?id=${project.identifier}) ` + 'ماموریت زیر رو انجام داد: \n\n' + `✨ *${taskname}*\n` + ` به همین خاطر بهش ${taskreward} امتیاز دادم!`, {parse_mode: "Markdown"})
+        telegram.sendMessage(uid, `*تبریک!*\n` + 'شما ماموریت زیر رو با موفقیت انجام دادید:\n' + `*${taskname}*` + `\nحالا ${project.tbalance} امتیاز دارید.`, {parse_mode: "Markdown"})
+      }
+      if(task == 'task14'){
+        const taskname = "خوش شانسی";
+        const taskreward = 30;
+        await project.update({ tbalance: project.tbalance + taskreward })
+        telegram.sendMessage(msg.chat.id, `امتیاز با موفقیت واریز شد.`)
+        telegram.sendMessage(MAINGP `کاربر [${project.firstName}](tg://user?id=${project.identifier}) ` + 'ماموریت زیر رو انجام داد: \n\n' + `✨ *${taskname}*\n` + ` به همین خاطر بهش ${taskreward} امتیاز دادم!`, {parse_mode: "Markdown"})
+        telegram.sendMessage(uid, `*تبریک!*\n` + 'شما ماموریت زیر رو با موفقیت انجام دادید:\n' + `*${taskname}*` + `\nحالا ${project.tbalance} امتیاز دارید.`, {parse_mode: "Markdown"})
+      }
+      if(task == 'task15'){
+        const taskname = "بابک زنجانی (قاتل)";
+        const taskreward = 70;
+        await project.update({ tbalance: project.tbalance + taskreward })
+        telegram.sendMessage(msg.chat.id, `امتیاز با موفقیت واریز شد.`)
+        telegram.sendMessage(MAINGP `کاربر [${project.firstName}](tg://user?id=${project.identifier}) ` + 'ماموریت زیر رو انجام داد: \n\n' + `✨ *${taskname}*\n` + ` به همین خاطر بهش ${taskreward} امتیاز دادم!`, {parse_mode: "Markdown"})
+        telegram.sendMessage(uid, `*تبریک!*\n` + 'شما ماموریت زیر رو با موفقیت انجام دادید:\n' + `*${taskname}*` + `\nحالا ${project.tbalance} امتیاز دارید.`, {parse_mode: "Markdown"})
+      }
+      if(task == 'task16'){
+        const taskname = "بابک زنجانی (شکار)";
+        const taskreward = 30;
+        await project.update({ tbalance: project.tbalance + taskreward })
+        telegram.sendMessage(msg.chat.id, `امتیاز با موفقیت واریز شد.`)
+        telegram.sendMessage(MAINGP `کاربر [${project.firstName}](tg://user?id=${project.identifier}) ` + 'ماموریت زیر رو انجام داد: \n\n' + `✨ *${taskname}*\n` + ` به همین خاطر بهش ${taskreward} امتیاز دادم!`, {parse_mode: "Markdown"})
+        telegram.sendMessage(uid, `*تبریک!*\n` + 'شما ماموریت زیر رو با موفقیت انجام دادید:\n' + `*${taskname}*` + `\nحالا ${project.tbalance} امتیاز دارید.`, {parse_mode: "Markdown"})
+      }
+      if(task == 'task17'){
+        const taskname = "کارمند وایلد";
+        const taskreward = 150;
+        await project.update({ tbalance: project.tbalance + taskreward })
+        telegram.sendMessage(msg.chat.id, `امتیاز با موفقیت واریز شد.`)
+        telegram.sendMessage(MAINGP `کاربر [${project.firstName}](tg://user?id=${project.identifier}) ` + 'ماموریت زیر رو انجام داد: \n\n' + `✨ *${taskname}*\n` + ` به همین خاطر بهش ${taskreward} امتیاز دادم!`, {parse_mode: "Markdown"})
+        telegram.sendMessage(uid, `*تبریک!*\n` + 'شما ماموریت زیر رو با موفقیت انجام دادید:\n' + `*${taskname}*` + `\nحالا ${project.tbalance} امتیاز دارید.`, {parse_mode: "Markdown"})
+      }
+      if(task == 'task18'){
+        const taskname = "لوک خوش شانس";
+        const taskreward = 45;
+        await project.update({ tbalance: project.tbalance + taskreward })
+        telegram.sendMessage(msg.chat.id, `امتیاز با موفقیت واریز شد.`)
+        telegram.sendMessage(MAINGP `کاربر [${project.firstName}](tg://user?id=${project.identifier}) ` + 'ماموریت زیر رو انجام داد: \n\n' + `✨ *${taskname}*\n` + ` به همین خاطر بهش ${taskreward} امتیاز دادم!`, {parse_mode: "Markdown"})
+        telegram.sendMessage(uid, `*تبریک!*\n` + 'شما ماموریت زیر رو با موفقیت انجام دادید:\n' + `*${taskname}*` + `\nحالا ${project.tbalance} امتیاز دارید.`, {parse_mode: "Markdown"})
+      }
+      if(task == 'task19'){
+        const taskname = "مشارکت";
+        const taskreward = 30;
+        await project.update({ tbalance: project.tbalance + taskreward })
+        telegram.sendMessage(msg.chat.id, `امتیاز با موفقیت واریز شد.`)
+        telegram.sendMessage(MAINGP `کاربر [${project.firstName}](tg://user?id=${project.identifier}) ` + 'ماموریت زیر رو انجام داد: \n\n' + `✨ *${taskname}*\n` + ` به همین خاطر بهش ${taskreward} امتیاز دادم!`, {parse_mode: "Markdown"})
+        telegram.sendMessage(uid, `*تبریک!*\n` + 'شما ماموریت زیر رو با موفقیت انجام دادید:\n' + `*${taskname}*` + `\nحالا ${project.tbalance} امتیاز دارید.`, {parse_mode: "Markdown"})
+      }
+      if(task == 'task20'){
+        const taskname = "مشارکت و برنده شدن";
+        const taskreward = 60;
+        await project.update({ tbalance: project.tbalance + taskreward })
+        telegram.sendMessage(msg.chat.id, `امتیاز با موفقیت واریز شد.`)
+        telegram.sendMessage(MAINGP `کاربر [${project.firstName}](tg://user?id=${project.identifier}) ` + 'ماموریت زیر رو انجام داد: \n\n' + `✨ *${taskname}*\n` + ` به همین خاطر بهش ${taskreward} امتیاز دادم!`, {parse_mode: "Markdown"})
+        telegram.sendMessage(uid, `*تبریک!*\n` + 'شما ماموریت زیر رو با موفقیت انجام دادید:\n' + `*${taskname}*` + `\nحالا ${project.tbalance} امتیاز دارید.`, {parse_mode: "Markdown"})
+      }       
+      if(task == 'task21'){
+        const taskname = "قاتل پروو";
+        const taskreward = 40;
+        await project.update({ tbalance: project.tbalance + taskreward })
+        telegram.sendMessage(msg.chat.id, `امتیاز با موفقیت واریز شد.`)
+        telegram.sendMessage(MAINGP `کاربر [${project.firstName}](tg://user?id=${project.identifier}) ` + 'ماموریت زیر رو انجام داد: \n\n' + `✨ *${taskname}*\n` + ` به همین خاطر بهش ${taskreward} امتیاز دادم!`, {parse_mode: "Markdown"})
+        telegram.sendMessage(uid, `*تبریک!*\n` + 'شما ماموریت زیر رو با موفقیت انجام دادید:\n' + `*${taskname}*` + `\nحالا ${project.tbalance} امتیاز دارید.`, {parse_mode: "Markdown"})
+      }
+      if(task == 'task22'){
+        const taskname = "درگاز";
+        const taskreward = 30;
+        await project.update({ tbalance: project.tbalance + taskreward })
+        telegram.sendMessage(msg.chat.id, `امتیاز با موفقیت واریز شد.`)
+        telegram.sendMessage(MAINGP `کاربر [${project.firstName}](tg://user?id=${project.identifier}) ` + 'ماموریت زیر رو انجام داد: \n\n' + `✨ *${taskname}*\n` + ` به همین خاطر بهش ${taskreward} امتیاز دادم!`, {parse_mode: "Markdown"})
+        telegram.sendMessage(uid, `*تبریک!*\n` + 'شما ماموریت زیر رو با موفقیت انجام دادید:\n' + `*${taskname}*` + `\nحالا ${project.tbalance} امتیاز دارید.`, {parse_mode: "Markdown"})
+      }
     } else {
       telegram.sendMessage(msg.chat.id, 'این دستور فقط از طریق گروه مدیریتی قابل اجرا است.')
     }
@@ -402,7 +636,7 @@ telegram.on("new_chat_members", async function(msg){
     telegram.forwardMessage(`${project.supportid}`, chatID, msg.message_id)
     telegram.sendMessage(`${project.supportid}`, 'کاربر: ' + `[${msg.from.first_name}](tg://user?id=${msg.from.id})` + '\nدرخواست پشتیبانی خصوصی دارد\nلطفا یک پیام خصوصی برای او ارسال کنید' + `\n[Jump to message](https://t.me/c/${slicedcid}/${msg.message_id})`, {parse_mode: "Markdown"})
   });
-
+/*
   telegram.onText(/\@admin/, async function(msg){
     const project = await Groups.findByPk(msg.chat.id);
     var chatID = msg.chat.id
@@ -410,7 +644,7 @@ telegram.on("new_chat_members", async function(msg){
     telegram.sendMessage(chatID, 'گزارش شد!', {reply_to_message_id: msg.message_id})
     telegram.sendMessage(`${project.supportid}`, 'کاربر: ' + `[${msg.from.first_name}](tg://user?id=${msg.from.id})` + '\nیک گزارش در گروه ثبت کرد' + `\n[Jump to message](https://t.me/c/${slicedcid}/${msg.message_id})`, {parse_mode: "Markdown"})
   });
-
+*/
   telegram.onText(/\#ch/, async function(msg){
     const project = await Groups.findByPk(msg.chat.id);
     var chatID = msg.chat.id
@@ -473,6 +707,7 @@ telegram.on("new_chat_members", async function(msg){
       }
     }
   )}});
+
 /*
   telegram.on("text", async function(msg){
     const project = await Users.findByPk(msg.from.id);
