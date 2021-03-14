@@ -1,4 +1,3 @@
-//initialise telegram bot
 const token    = "nothing:here";
 const TelegramBot = require('node-telegram-bot-api');
 const telegram = new TelegramBot(token, {polling: true});
@@ -31,7 +30,7 @@ try{
   }
 }
 });
-
+/*
 telegram.onText(/\-promoteme/, async function(msg){
   const fromID = msg.from.id
   const chatID = msg.chat.id
@@ -56,7 +55,7 @@ telegram.onText(/\-promoteme/, async function(msg){
   telegram.sendMessage(chatID, 'اجازه کافی برای این کار را ندارم!');
   }
 })
-
+*//*
 telegram.on("new_chat_members", async function(msg){
   if(msg.chat.id == '-1001479372715'){
     telegram.sendMessage(msg.chat.id, `سلام [${msg.new_chat_member.first_name}](tg://user?id=${msg.new_chat_member.id}) به گروه ساپورت آری خوش اومدی. لطفا سوال یا مشکلتون رو مطرح کنیم، در سریع ترین زمان ممکن پاسخگو خواهیم بود.`, {parse_mode: "Markdown"})
@@ -78,10 +77,10 @@ telegram.on("new_chat_members", async function(msg){
 )}
 }}
 });
-
+*/
   telegram.onText(/\/gamble (.+)/, async function(msg, match){
     const gamblevalue = match[1];
-    if(gamblevalue == ''){
+    if(msg.text === "/gamble"){
       telegram.sendMessage(msg.chat.id, 'لطفا مشخص کنید چه مقدار از پولتان را میخواهید ریسک کنید، مثال:\n */gamble 100*', {parse_mode: "Markdown"})
     } else {
       const project = await Users.findByPk(msg.from.id);
@@ -99,12 +98,15 @@ telegram.on("new_chat_members", async function(msg){
     } else {
       await project.update({ balance: project.balance + randomnum })
       telegram.sendMessage(msg.chat.id, '*بردی!*\n' + `-${randomnum}- سکه بهت اضافه کردم :)`, {parse_mode: "Markdown"})
+      if (randomnum >= 100){
+        if(project.gambler= false){
+        await project.update({ gambler: true })
+        }
+      }
     } } else {
       telegram.sendMessage(msg.chat.id, 'جیبت پر شد برگرد 🕸️')
-    }
-    telegram.sendMessage(msg.chat.id, randomnum)
-    }
-  })
+    }}
+  });
 
   telegram.onText(/\-leavechat (.+) (.+)/, function(msg, match){
     if(msg.from.id == botadmin1){
@@ -218,21 +220,30 @@ telegram.on("new_chat_members", async function(msg){
 
   const Users = sequelize.define('Users', {
     // Model attributes are defined here
-   identifier: {
+   id: {
       type: DataTypes.INTEGER,
       primaryKey: true
     },
-      firstName: {
+      name: {
         type: DataTypes.STRING
       },
       balance: {
         type: DataTypes.INTEGER
       },
-      tbalance: {
+      chatid: {
         type: DataTypes.INTEGER
       },
-      chatid: {
-          type: DataTypes.INTEGER
+      thief: {
+        type: DataTypes.BOOLEAN
+      },
+      gambler: {
+        type: DataTypes.BOOLEAN
+      },
+      SRB: {
+        type: DataTypes.BOOLEAN
+      },
+      SM: {
+        type: DataTypes.BOOLEAN
       }
     });
     const Groups = sequelize.define('Groups', {
@@ -303,8 +314,8 @@ telegram.on("new_chat_members", async function(msg){
   telegram.onText(/\/addme/, async function(msg){
     const project = await Users.findByPk(msg.from.id);
     if (project === null) {
-    const newuser = await Users.create({ identifier: msg.from.id, firstName: msg.from.first_name, balance: '100', chatid: msg.chat.id});
-    telegram.sendMessage(msg.chat.id, 'تورو به حافظه ام اضافه کردم،\nو صد سکه به موجودیت اضافه کردم. امیدوارم درست ازش استفاده کنی 😄')
+    const newuser = await Users.create({ identifier: msg.from.id, firstName: msg.from.first_name, balance: '10', chatid: msg.chat.id});
+    telegram.sendMessage(msg.chat.id, 'تورو به حافظه ام اضافه کردم،\nو 10 سکه به موجودیت اضافه کردم. امیدوارم درست ازش استفاده کنی 😄')
     } else {
       telegram.sendMessage(msg.chat.id, 'نیازی نیست! همین الانشم تورو میشناسم :D')
     }
@@ -316,7 +327,7 @@ telegram.on("new_chat_members", async function(msg){
     if (project === null) {
       telegram.sendMessage(msg.chat.id, 'تاحالا این کاربر رو دیدم؟ \n`[error: 1001]`', {parse_mode: "Markdown"})
     } else {
-      telegram.sendMessage(msg.chat.id, 'Information about: `' + project.identifier + '` \n\n*Name in database:*\n`' + project.firstName + '` \n*ID:* \n`' + project.identifier + '` \n *Chat:* \n`' + project.chatid + '` \n*balanace:* `' + project.balance + '` \n*challenge balance:* `' + project.tbalance + '` \n*signed at:* \n`' + project.createdAt + '`\n*last updated at: * \n`' + project.updatedAt + '`' , {parse_mode: "Markdown"});
+      telegram.sendMessage(msg.chat.id, 'Information about: `' + project.id + '` \n\n*Name in database:*\n`' + project.name + '` \n*ID:* \n`' + project.id + '` \n*balanace:* `' + project.balance + '` \n*signed at:* \n`' + project.createdAt + '`\n*last updated at: * \n`' + project.updatedAt + '`' , {parse_mode: "Markdown"});
     }
   });
 
@@ -329,36 +340,16 @@ telegram.on("new_chat_members", async function(msg){
       }
     });
     const projectsplits = JSON.stringify(project1, null, 10).split("}");
-    telegram.sendMessage(msg.chat.id, projectsplits[1]);
-    telegram.sendMessage(msg.chat.id, projectsplits[2]);
-    telegram.sendMessage(msg.chat.id, projectsplits[3]);
-    telegram.sendMessage(msg.chat.id, projectsplits[4]);
-    telegram.sendMessage(msg.chat.id, projectsplits[5]);
-    telegram.sendMessage(msg.chat.id, projectsplits[6]);
-    telegram.sendMessage(msg.chat.id, projectsplits[7]);
-    telegram.sendMessage(msg.chat.id, projectsplits[8]);
-    telegram.sendMessage(msg.chat.id, projectsplits[9]);
-    telegram.sendMessage(msg.chat.id, projectsplits[10]);
-    telegram.sendMessage(msg.chat.id, projectsplits[11]);
-    telegram.sendMessage(msg.chat.id, projectsplits[12]);
-    telegram.sendMessage(msg.chat.id, projectsplits[13]);
-    telegram.sendMessage(msg.chat.id, projectsplits[14]);
-    telegram.sendMessage(msg.chat.id, projectsplits[15]);
-    telegram.sendMessage(msg.chat.id, projectsplits[16]);
-    telegram.sendMessage(msg.chat.id, projectsplits[17]);
-    telegram.sendMessage(msg.chat.id, projectsplits[18]);
-    telegram.sendMessage(msg.chat.id, projectsplits[19]);
-    telegram.sendMessage(msg.chat.id, projectsplits[20]);
-    telegram.sendMessage(msg.chat.id, projectsplits[21]);
+    telegram.sendMessage(msg.chat.id, project1);
+
   })
 
   telegram.on("text", async function(msg){
     const project = await Users.findByPk(msg.from.id);
     if (project === null) {
-      if(msg.chat.id != '-1001479372715'){
-    const newuser = await Users.create({ identifier: msg.from.id, firstName: msg.from.first_name, balance: '100', chatid: msg.chat.id});
+    const newuser = await Users.create({ id: msg.from.id, name: msg.from.first_name, balance: '10', chatid: msg.chat.id});
 
-    }}
+    }
   });
 
   telegram.onText(/\/b/, async function(msg){
@@ -367,11 +358,36 @@ telegram.on("new_chat_members", async function(msg){
     const project2 = await Groups.findByPk(project.chatid);
     if (project === null) {
       telegram.sendMessage(msg.chat.id, 'من تورو میشناسم؟')
-    } else {
-      telegram.sendMessage(msg.chat.id, `👤 ${project.firstName}\nگروه: ${project2.name}\nموجودی: ${project.balance}💰\nامتیاز چالش: ${project.tbalance}🕹️`) 
+    } else { 
+      if(project.balance >= 1000){
+        if(project.SM == false){
+          await project.update({ SM: true })
+        }
+      }
+      if(project.thief == true){
+        var slot1 = "دزد"
+      } else {
+        var slot1 = "🕸️"
+      }
+      if(project.gambler == true){
+        var slot2 = "قمارباز قهار"
+      } else {
+        var slot2 = "🕸️"
+      }
+      if(project.SRB == true){
+        var slot3 = "بچه مایه‌دار لوس"
+      } else {
+        var slot3 = "🕸️"
+      }
+      if(project.SM == true){
+        var slot4 = "خودساخته"
+      } else {
+        var slot4 = "🕸️"
+      }
+      telegram.sendMessage(msg.chat.id, `👤 ${project.name}\nگروه: ${project2.name}\nموجودی: ${project.balance}💰\n\nسابقه:\n${slot1} | ${slot2} | ${slot3} | ${slot4}`) 
   }}
   });
-
+/*
   telegram.onText(/\/complete (.+) (.+)/, async function(msg, match){
     const uid = match[1];
     const task = match[2];
@@ -559,7 +575,7 @@ telegram.on("new_chat_members", async function(msg){
       telegram.sendMessage(msg.chat.id, 'این دستور فقط از طریق گروه مدیریتی قابل اجرا است.')
     }
   })
-
+*/
   telegram.onText(/\/s/), async function(msg){
     if (msg.text == '/s'){
       
@@ -585,7 +601,7 @@ telegram.on("new_chat_members", async function(msg){
 
   });
 
-  telegram.onText(/\/ping/, function(msg){
+  telegram.onText(/\-ping/, function(msg){
     var chatID = msg.chat.id
     telegram.sendMessage(chatID,'Pong!');
   });
@@ -604,30 +620,6 @@ telegram.on("new_chat_members", async function(msg){
     }
     */
   });
-
-  telegram.onText(/\-attack (.+)/, function(msg,match){
-    var chatID = msg.chat.id;
-    var CID = msg.from.id;
-    var gpname = match[1];
-    var wwinpersian = '[گروه گرگینه به فارسی](https://t.me/joinchat/Ot_E3lgtb6sQR-3b0WMW0w)'
-    if (CID == '993040642' || '987743454') {
-      if(gpname == 'mafiagame'){
-        telegram.sendMessage(chatID,'پیام مخصوص اتک به گروه Mafia ɢᴀᴍᴇ🐺:')
-        telegram.sendMessage(chatID, 'پرو پلیر عزیز گروه Mafia ɢᴀᴍᴇ🐺\nگروهی که شما در آن عضو هستید به دلیل *نقض قوانین ربات بلک* وارد لیست سیاه این ربات شده و *دیگر قادر به استفاده از رباتهای این مجموعه نیست*\!\n\n\nاگر هنوز مایل به استفاده از ربات بلک هستید\. میتوانید به ' + wwinpersian + ' بپیوندید و بجز لذت بردن از بازی، از جوایز نقدی و قدرت های اختصاصی این گروه استفاده کنید\.\n\n' + '[👥برای عضو شدن کلیک کنید👥](https://t.me/joinchat/Ot_E3lgtb6sQR-3b0WMW0w)', {parse_mode: "Markdown"})
-       } else {
-      telegram.sendMessage(chatID, 'نه، ما فقط بک  میزنیم :)')
-      };
-    } else {
-      telegram.sendMessage(chatID, 'شما دسترسی به این دستور را از دست داده اید!')
-    }
-
-    /*
-    if(CID == '987743454'){
-      telegram.sendMessage(chatID, `${PM}`)
-    }
-    */
-  });
-
   telegram.onText(/\/preport/, async function(msg){
     const project = await Groups.findByPk(msg.chat.id);
     var chatID = msg.chat.id
@@ -644,7 +636,7 @@ telegram.on("new_chat_members", async function(msg){
     telegram.sendMessage(chatID, 'گزارش شد!', {reply_to_message_id: msg.message_id})
     telegram.sendMessage(`${project.supportid}`, 'کاربر: ' + `[${msg.from.first_name}](tg://user?id=${msg.from.id})` + '\nیک گزارش در گروه ثبت کرد' + `\n[Jump to message](https://t.me/c/${slicedcid}/${msg.message_id})`, {parse_mode: "Markdown"})
   });
-*/
+*//*
   telegram.onText(/\#ch/, async function(msg){
     const project = await Groups.findByPk(msg.chat.id);
     var chatID = msg.chat.id
@@ -707,12 +699,12 @@ telegram.on("new_chat_members", async function(msg){
       }
     }
   )}});
-
+*/
 /*
   telegram.on("text", async function(msg){
     const project = await Users.findByPk(msg.from.id);
     if (project === null) {
-    const newuser = await Users.create({ identifier: msg.from.id, firstName: msg.from.first_name, balance: '100'});
+    const newuser = await Users.create({ id: msg.from.id, name: msg.from.first_name, balance: '10'});
     }
   });
 */
@@ -759,4 +751,3 @@ telegram.on("new_chat_members", async function(msg){
       */
     });
   }); 
-
