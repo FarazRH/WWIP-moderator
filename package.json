@@ -10,7 +10,7 @@
   "license": "ISC",
   "dependencies": {
     "forever-monitor": "^3.0.0",
-    "got": "^7.1.0",
+    "got": "^11.8.5",
     "html-to-text": "^5.1.1",
     "moment": "^2.26.0",
     "mysql": "^2.18.1",
